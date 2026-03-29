@@ -1,30 +1,33 @@
 const STATUSES = {
-  new:        { label: 'Nuevo',        cls: 'bg-gray-100 text-gray-700 border-gray-200' },
-  reviewing:  { label: 'En Revisión',  cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-  on_the_way: { label: 'En Camino',    cls: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  resolved:   { label: 'Resuelto',     cls: 'bg-green-100 text-green-700 border-green-200' },
+  new:        { label: 'Nuevo',       dot: '#9CA3AF', bg: '#F3F4F6', color: '#374151' },
+  reviewing:  { label: 'En Revisión', dot: '#4F3FE6', bg: '#EEF0FF', color: '#4F3FE6' },
+  on_the_way: { label: 'En Camino',   dot: '#D97706', bg: '#FFFBEB', color: '#92400E' },
+  resolved:   { label: 'Resuelto',    dot: '#059669', bg: '#ECFDF5', color: '#065F46' },
 };
 
 const PRIORITIES = {
-  low:    { label: 'Baja',    cls: 'bg-gray-100 text-gray-600' },
-  normal: { label: 'Normal',  cls: 'bg-blue-100 text-blue-600' },
-  high:   { label: 'Alta',    cls: 'bg-orange-100 text-orange-600' },
-  urgent: { label: 'Urgente', cls: 'bg-red-100 text-red-600' },
+  low:    { label: 'Baja',     bg: '#F3F4F6', color: '#6B7280' },
+  normal: { label: 'Normal',   bg: '#EEF0FF', color: '#4F3FE6' },
+  high:   { label: 'Alta',     bg: '#FFF7ED', color: '#C2410C' },
+  urgent: { label: '🔴 Urgente', bg: '#FFF0F0', color: '#D92D20' },
 };
 
 export function StatusBadge({ status }) {
-  const cfg = STATUSES[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = STATUSES[status] || { label: status, dot: '#9CA3AF', bg: '#F3F4F6', color: '#374151' };
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.cls}`}>
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
+      style={{ background: cfg.bg, color: cfg.color }}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cfg.dot }} />
       {cfg.label}
     </span>
   );
 }
 
 export function PriorityBadge({ priority }) {
-  const cfg = PRIORITIES[priority] || { label: priority, cls: 'bg-gray-100 text-gray-600' };
+  const cfg = PRIORITIES[priority] || { label: priority, bg: '#F3F4F6', color: '#6B7280' };
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${cfg.cls}`}>
+    <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium"
+      style={{ background: cfg.bg, color: cfg.color }}>
       {cfg.label}
     </span>
   );

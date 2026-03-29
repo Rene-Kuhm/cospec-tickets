@@ -3,7 +3,6 @@ import { MapPicker } from './MapPicker';
 import api from '../api';
 
 const EMPTY = { client_name: '', client_phone: '', client_address: '', lat: null, lng: null, description: '', priority: 'normal' };
-
 const BASE_LOCATION = 'Eduardo Castex, La Pampa, Argentina';
 
 async function geocode(address) {
@@ -18,17 +17,23 @@ async function geocode(address) {
   return null;
 }
 
+const inputCls = 'w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition';
+const inputStyle = { borderColor: 'var(--border)', background: 'var(--bg-base)', color: 'var(--text-primary)' };
+
 export default function TicketForm({ onCreated, onCancel }) {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState('');
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   async function handleAddressBlur() {
     if (!form.client_address) return;
+    setGeocoding(true);
     const coords = await geocode(form.client_address);
-    if (coords) set('lat', coords.lat) || setForm(f => ({ ...f, lat: coords.lat, lng: coords.lng }));
+    if (coords) setForm(f => ({ ...f, lat: coords.lat, lng: coords.lng }));
+    setGeocoding(false);
   }
 
   async function handleSubmit(e) {
@@ -49,67 +54,71 @@ export default function TicketForm({ onCreated, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del cliente *</label>
+        <Field label="Nombre del cliente *">
           <input
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className={inputCls}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border)'}
             value={form.client_name}
             onChange={e => set('client_name', e.target.value)}
             placeholder="Juan García"
             required
           />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+        </Field>
+        <Field label="Teléfono">
           <input
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className={inputCls}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border)'}
             value={form.client_phone}
             onChange={e => set('client_phone', e.target.value)}
-            placeholder="2901 123456"
+            placeholder="2335 123456"
           />
-        </div>
+        </Field>
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
-          Dirección <span className="text-gray-400">(se busca en el mapa automáticamente)</span>
-        </label>
+      <Field label={geocoding ? 'Dirección (buscando en mapa…)' : 'Dirección'}>
         <input
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className={inputCls}
+          style={{ ...inputStyle, borderColor: geocoding ? 'var(--accent)' : 'var(--border)' }}
+          onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+          onBlur={handleAddressBlur}
           value={form.client_address}
           onChange={e => set('client_address', e.target.value)}
-          onBlur={handleAddressBlur}
-          placeholder="Estrada 1310  (se agrega Eduardo Castex automáticamente)"
+          placeholder="Estrada 1310  (Eduardo Castex se agrega solo)"
         />
-      </div>
+      </Field>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
-          Ubicación en mapa <span className="text-gray-400">(o hacé click para marcar)</span>
-        </label>
+      <Field label="Ubicación en mapa">
         <MapPicker
           lat={form.lat}
           lng={form.lng}
           onSelect={(lat, lng) => setForm(f => ({ ...f, lat, lng }))}
         />
-      </div>
+      </Field>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Descripción del reclamo *</label>
+      <Field label="Descripción del reclamo *">
         <textarea
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+          className={inputCls}
+          style={inputStyle}
+          onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+          onBlur={e => e.target.style.borderColor = 'var(--border)'}
           rows={3}
           value={form.description}
           onChange={e => set('description', e.target.value)}
           placeholder="Sin señal, fibra cortada, velocidad lenta..."
           required
         />
-      </div>
+      </Field>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Prioridad</label>
+      <Field label="Prioridad">
         <select
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+          className={inputCls}
+          style={{ ...inputStyle, appearance: 'auto' }}
+          onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+          onBlur={e => e.target.style.borderColor = 'var(--border)'}
           value={form.priority}
           onChange={e => set('priority', e.target.value)}
         >
@@ -118,24 +127,48 @@ export default function TicketForm({ onCreated, onCancel }) {
           <option value="high">Alta</option>
           <option value="urgent">🔴 Urgente</option>
         </select>
-      </div>
+      </Field>
 
-      {error && <p className="text-red-600 text-sm bg-red-50 p-2 rounded">{error}</p>}
+      {error && (
+        <div className="px-3.5 py-2.5 rounded-lg text-sm"
+          style={{ background: '#FFF0F0', color: '#D92D20', border: '1px solid #FFC9C9' }}>
+          {error}
+        </div>
+      )}
 
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-1">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition"
+          className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition disabled:opacity-60"
+          style={{ background: 'var(--accent)' }}
+          onMouseEnter={e => !loading && (e.currentTarget.style.background = 'var(--accent-hover)')}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
         >
           {loading ? 'Guardando...' : 'Crear Reclamo'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="px-4 py-2.5 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2.5 rounded-lg text-sm transition"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--bg-card)' }}
+          >
             Cancelar
           </button>
         )}
       </div>
     </form>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }

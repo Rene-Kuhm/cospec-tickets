@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
+import AppHeader from '../components/AppHeader';
 import { MapView } from '../components/MapPicker';
 import api from '../api';
 
@@ -13,11 +14,16 @@ const STATUS_OPTIONS = [
   { value: 'resolved', label: 'Resueltos' },
 ];
 
-function StatCard({ label, value, color }) {
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function StatCard({ label, value, accent }) {
   return (
-    <div className={`bg-white rounded-xl p-4 border-l-4 ${color} shadow-sm`}>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
-      <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+    <div className="rounded-xl p-4 flex flex-col gap-1"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <p className="text-2xl font-bold tabular-nums" style={{ color: accent || 'var(--text-primary)' }}>
+        {value ?? '—'}
+      </p>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
     </div>
   );
 }
@@ -45,7 +51,10 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
-  useEffect(() => { loadStats(); api.get('/users/technicians').then(r => setTechnicians(r.data)); }, []);
+  useEffect(() => {
+    loadStats();
+    api.get('/users/technicians').then(r => setTechnicians(r.data));
+  }, []);
 
   useSocket({
     'ticket:new': (t) => { setTickets(prev => [t, ...prev]); loadStats(); },
@@ -75,73 +84,73 @@ export default function AdminDashboard() {
     }
   }
 
-  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-            </svg>
-          </div>
-          <span className="font-bold text-gray-900">COSPEC</span>
-          <span className="text-gray-400 text-sm">/ Admin</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
+      <AppHeader
+        section="Administración"
+        user={user}
+        onLogout={logout}
+        actions={
+          <div className="flex items-center gap-2">
             <select
-              className="border border-gray-200 rounded px-2 py-1 text-xs"
+              className="text-xs px-2.5 py-1.5 rounded-lg border outline-none"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
               value={exportMonth}
               onChange={e => setExportMonth(Number(e.target.value))}
             >
-              {months.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
+              {MONTHS.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
             </select>
             <input
               type="number"
-              className="border border-gray-200 rounded px-2 py-1 text-xs w-20"
+              className="w-20 text-xs px-2.5 py-1.5 rounded-lg border outline-none"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
               value={exportYear}
               onChange={e => setExportYear(Number(e.target.value))}
             />
             <button
               onClick={handleExport}
               disabled={loadingExport}
-              className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-medium disabled:opacity-50 flex items-center gap-1"
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 transition"
+              style={{ background: '#059669' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#047857'}
+              onMouseLeave={e => e.currentTarget.style.background = '#059669'}
             >
               {loadingExport ? 'Generando...' : '⬇ Excel'}
             </button>
           </div>
-          <div className="text-sm text-gray-600">{user.name}</div>
-          <button onClick={logout} className="text-xs text-gray-400 hover:text-red-500 transition">Salir</button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Stats */}
-      <div className="px-6 py-4 grid grid-cols-5 gap-3">
-        <StatCard label="Total reclamos" value={stats.total ?? '—'} color="border-blue-500" />
-        <StatCard label="Hoy" value={stats.today ?? '—'} color="border-indigo-500" />
-        <StatCard label="Resueltos hoy" value={stats.resolved_today ?? '—'} color="border-green-500" />
-        <StatCard label="Pendientes" value={stats.pending ?? '—'} color="border-yellow-500" />
-        <StatCard label="Urgentes activos" value={stats.urgent ?? '—'} color="border-red-500" />
+      <div className="px-6 py-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <StatCard label="Total reclamos"  value={stats.total}          accent="var(--text-primary)" />
+        <StatCard label="Creados hoy"     value={stats.today}          accent="var(--accent)" />
+        <StatCard label="Resueltos hoy"   value={stats.resolved_today} accent="#059669" />
+        <StatCard label="Pendientes"      value={stats.pending}        accent="#D97706" />
+        <StatCard label="Urgentes activos" value={stats.urgent}        accent="#D92D20" />
       </div>
 
-      {/* Main */}
+      {/* Main content */}
       <div className="flex flex-1 px-6 pb-6 gap-4 overflow-hidden">
         {/* Ticket list */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-            <span className="font-semibold text-sm text-gray-700">Reclamos</span>
-            <div className="flex gap-1 ml-auto">
+        <div className="flex-1 rounded-xl flex flex-col overflow-hidden"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          {/* Filters */}
+          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
+            <span className="text-sm font-semibold mr-1" style={{ color: 'var(--text-primary)' }}>
+              Reclamos
+            </span>
+            <div className="flex gap-1 ml-auto flex-wrap">
               {STATUS_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => setFilterStatus(opt.value)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-                    filterStatus === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-3 py-1 rounded-full text-xs font-medium transition"
+                  style={
+                    filterStatus === opt.value
+                      ? { background: 'var(--accent)', color: '#fff' }
+                      : { background: 'var(--bg-base)', color: 'var(--text-secondary)' }
+                  }
                 >
                   {opt.label}
                 </button>
@@ -151,28 +160,47 @@ export default function AdminDashboard() {
 
           <div className="overflow-y-auto flex-1">
             {tickets.length === 0 ? (
-              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Sin reclamos</div>
+              <div className="flex items-center justify-center h-32 text-sm" style={{ color: 'var(--text-muted)' }}>
+                Sin reclamos
+              </div>
             ) : (
               tickets.map(t => (
                 <div
                   key={t.id}
                   onClick={() => setSelected(t)}
-                  className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${selected?.id === t.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}
+                  className="px-4 py-3 cursor-pointer transition"
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    background: selected?.id === t.id ? 'var(--accent-light)' : 'transparent',
+                    borderLeft: selected?.id === t.id ? '3px solid var(--accent)' : '3px solid transparent',
+                  }}
+                  onMouseEnter={e => { if (selected?.id !== t.id) e.currentTarget.style.background = 'var(--bg-base)'; }}
+                  onMouseLeave={e => { if (selected?.id !== t.id) e.currentTarget.style.background = 'transparent'; }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-mono text-gray-400">{t.ticket_number}</span>
+                        <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                          {t.ticket_number}
+                        </span>
                         <StatusBadge status={t.status} />
                         <PriorityBadge priority={t.priority} />
                       </div>
-                      <p className="text-sm font-medium text-gray-800 truncate">{t.client_name || '—'}</p>
-                      <p className="text-xs text-gray-500 truncate">{t.description}</p>
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                        {t.client_name || '—'}
+                      </p>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                        {t.description}
+                      </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs text-gray-400">{new Date(t.created_at).toLocaleDateString('es-AR')}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(t.created_at).toLocaleDateString('es-AR')}
+                      </p>
                       {t.assigned_name && (
-                        <p className="text-xs text-blue-600 mt-0.5">{t.assigned_name}</p>
+                        <p className="text-xs mt-0.5 font-medium" style={{ color: 'var(--accent)' }}>
+                          {t.assigned_name}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -184,50 +212,65 @@ export default function AdminDashboard() {
 
         {/* Detail panel */}
         {selected && (
-          <div className="w-80 bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <span className="font-semibold text-sm text-gray-700">{selected.ticket_number}</span>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+          <div className="w-80 rounded-xl overflow-y-auto shrink-0"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="px-4 py-3 flex items-center justify-between"
+              style={{ borderBottom: '1px solid var(--border)' }}>
+              <span className="font-semibold text-sm font-mono" style={{ color: 'var(--text-primary)' }}>
+                {selected.ticket_number}
+              </span>
+              <button
+                onClick={() => setSelected(null)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-lg leading-none transition"
+                style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}
+              >
+                ×
+              </button>
             </div>
 
             <div className="p-4 space-y-4">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <StatusBadge status={selected.status} />
                 <PriorityBadge priority={selected.priority} />
               </div>
 
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Cliente</p>
-                <p className="text-sm font-medium text-gray-800">{selected.client_name || '—'}</p>
-                {selected.client_phone && <p className="text-xs text-gray-500">{selected.client_phone}</p>}
-              </div>
+              <Section label="Cliente">
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {selected.client_name || '—'}
+                </p>
+                {selected.client_phone && (
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    📞 {selected.client_phone}
+                  </p>
+                )}
+              </Section>
 
               {selected.client_address && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Dirección</p>
-                  <p className="text-sm text-gray-700">{selected.client_address}</p>
-                </div>
+                <Section label="Dirección">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {selected.client_address}
+                  </p>
+                </Section>
               )}
 
               <MapView lat={selected.client_lat} lng={selected.client_lng} />
 
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Reclamo</p>
-                <p className="text-sm text-gray-700">{selected.description}</p>
-              </div>
+              <Section label="Descripción del reclamo">
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{selected.description}</p>
+              </Section>
 
               {selected.resolution_notes && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Resolución</p>
-                  <p className="text-sm text-gray-700">{selected.resolution_notes}</p>
-                </div>
+                <Section label="Resolución">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{selected.resolution_notes}</p>
+                </Section>
               )}
 
-              {/* Assign technician */}
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Asignar Técnico</p>
+              <Section label="Asignar Técnico">
                 <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
                   value={selected.assigned_to || ''}
                   onChange={e => handleAssign(selected.id, e.target.value)}
                 >
@@ -236,9 +279,9 @@ export default function AdminDashboard() {
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
-              </div>
+              </Section>
 
-              <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
+              <div className="pt-2 text-xs space-y-0.5" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 <p>Cargado por: {selected.created_by_name}</p>
                 <p>Fecha: {new Date(selected.created_at).toLocaleString('es-AR')}</p>
                 {selected.resolved_at && (
@@ -249,6 +292,18 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function Section({ label, children }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+        style={{ color: 'var(--text-muted)' }}>
+        {label}
+      </p>
+      {children}
     </div>
   );
 }

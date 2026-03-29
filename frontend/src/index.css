@@ -2,4 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --accent:        #4F3FE6;
+    --accent-hover:  #3d2fd4;
+    --accent-light:  #EEF0FF;
+    --bg-base:       #F5F6FA;
+    --bg-card:       #FFFFFF;
+    --border:        #E8E9EF;
+    --text-primary:  #1C1C2E;
+    --text-secondary:#6B7280;
+    --text-muted:    #9CA3AF;
+  }
+
+  * { font-family: 'Inter', system-ui, sans-serif; }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
 .leaflet-container { height: 100%; width: 100%; }

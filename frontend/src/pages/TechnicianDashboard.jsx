@@ -2,25 +2,37 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
+import AppHeader from '../components/AppHeader';
 import { MapView } from '../components/MapPicker';
 import api from '../api';
 
 const NEXT_STATUS = {
-  new:        { value: 'reviewing',  label: '👁 Tomar reclamo',  cls: 'bg-blue-600 hover:bg-blue-700' },
-  reviewing:  { value: 'on_the_way', label: '🚗 Voy en camino',  cls: 'bg-yellow-500 hover:bg-yellow-600' },
-  on_the_way: { value: 'resolved',   label: '✅ Marcar resuelto', cls: 'bg-green-600 hover:bg-green-700' },
+  new:        { value: 'reviewing',  label: 'Tomar reclamo',  icon: '👁' },
+  reviewing:  { value: 'on_the_way', label: 'Voy en camino',  icon: '🚗' },
+  on_the_way: { value: 'resolved',   label: 'Marcar resuelto', icon: '✅' },
 };
 
 function ResolveModal({ ticket, onClose, onConfirm }) {
   const [notes, setNotes] = useState('');
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-        <h3 className="font-bold text-gray-900 mb-1">Resolver reclamo</h3>
-        <p className="text-sm text-gray-500 mb-4">{ticket.ticket_number} — {ticket.client_name}</p>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Notas de resolución</label>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.4)' }}>
+      <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <h3 className="font-semibold text-base mb-1" style={{ color: 'var(--text-primary)' }}>
+          Resolver reclamo
+        </h3>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+          {ticket.ticket_number} — {ticket.client_name}
+        </p>
+        <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
+          Notas de resolución
+        </label>
         <textarea
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-green-500 outline-none"
+          className="w-full rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none border transition"
+          style={{ borderColor: 'var(--border)', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
+          onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+          onBlur={e => e.target.style.borderColor = 'var(--border)'}
           rows={3}
           value={notes}
           onChange={e => setNotes(e.target.value)}
@@ -30,18 +42,50 @@ function ResolveModal({ ticket, onClose, onConfirm }) {
         <div className="flex gap-2 mt-4">
           <button
             onClick={() => onConfirm(notes)}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition"
+            className="flex-1 text-white text-sm font-semibold py-2.5 rounded-lg transition"
+            style={{ background: '#059669' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#047857'}
+            onMouseLeave={e => e.currentTarget.style.background = '#059669'}
           >
             Confirmar resolución
           </button>
           <button
             onClick={onClose}
-            className="px-4 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50"
+            className="px-4 py-2.5 rounded-lg text-sm transition"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--bg-card)' }}
           >
             Cancelar
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function GpsButton({ lat, lng, address }) {
+  function buildUrl(app) {
+    if (app === 'waze') {
+      return lat && lng
+        ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+        : `https://waze.com/ul?q=${encodeURIComponent(address + ', Eduardo Castex, La Pampa')}&navigate=yes`;
+    }
+    return lat && lng
+      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address + ', Eduardo Castex, La Pampa')}`;
+  }
+
+  return (
+    <div className="flex gap-1.5 mt-2">
+      <a href={buildUrl('google')} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition"
+        style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
+        🗺 Google Maps
+      </a>
+      <a href={buildUrl('waze')} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition"
+        style={{ background: '#FFF7ED', color: '#C2410C' }}>
+        🚗 Waze
+      </a>
     </div>
   );
 }
@@ -79,7 +123,7 @@ export default function TechnicianDashboard() {
   const resolved = tickets.filter(t => t.status === 'resolved');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
       {resolving && (
         <ResolveModal
           ticket={resolving}
@@ -88,53 +132,59 @@ export default function TechnicianDashboard() {
         />
       )}
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-            </svg>
-          </div>
-          <div>
-            <span className="font-bold text-gray-900 text-sm">COSPEC</span>
-            <span className="text-gray-400 text-xs ml-2">Técnico: {user.name}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-            {active.length} activos
-          </span>
-          <button onClick={logout} className="text-xs text-gray-400 hover:text-red-500 transition">Salir</button>
-        </div>
-      </header>
+      <AppHeader
+        section="Técnico"
+        user={user}
+        onLogout={logout}
+        actions={
+          active.length > 0 && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+              style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
+              {active.length} activos
+            </span>
+          )
+        }
+      />
 
-      <div className="max-w-2xl mx-auto px-4 py-5 space-y-3">
+      <div className="max-w-2xl mx-auto w-full px-4 py-6 space-y-3">
         {active.length === 0 && resolved.length === 0 ? (
-          <div className="bg-white rounded-xl p-10 text-center text-gray-400 border border-gray-200">
-            <p className="text-3xl mb-2">✅</p>
-            <p className="text-sm">Sin reclamos asignados</p>
+          <div className="rounded-xl py-16 flex flex-col items-center text-center"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center text-2xl"
+              style={{ background: '#ECFDF5' }}>
+              ✅
+            </div>
+            <p className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+              Sin reclamos asignados
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Todo al día por ahora
+            </p>
           </div>
         ) : (
           <>
             {active.length > 0 && (
               <>
-                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1">Activos</h2>
+                <p className="text-xs font-semibold uppercase tracking-wider px-1"
+                  style={{ color: 'var(--text-muted)' }}>
+                  Asignados a vos
+                </p>
                 {active.map(t => (
-                  <TicketCard key={t.id} ticket={t} loading={loading[t.id]} onAdvance={(ticket) => {
-                    if (NEXT_STATUS[ticket.status]?.value === 'resolved') {
-                      setResolving(ticket);
-                    } else {
-                      advance(ticket);
-                    }
-                  }} />
+                  <TicketCard key={t.id} ticket={t} loading={loading[t.id]}
+                    onAdvance={(ticket) => {
+                      if (NEXT_STATUS[ticket.status]?.value === 'resolved') setResolving(ticket);
+                      else advance(ticket);
+                    }}
+                  />
                 ))}
               </>
             )}
             {resolved.length > 0 && (
               <>
-                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 pt-2">Resueltos hoy</h2>
+                <p className="text-xs font-semibold uppercase tracking-wider px-1 pt-2"
+                  style={{ color: 'var(--text-muted)' }}>
+                  Resueltos hoy
+                </p>
                 {resolved.map(t => <TicketCard key={t.id} ticket={t} loading={false} onAdvance={null} />)}
               </>
             )}
@@ -145,72 +195,62 @@ export default function TechnicianDashboard() {
   );
 }
 
-function GpsButton({ lat, lng, address }) {
-  function buildUrl(app) {
-    if (app === 'waze') {
-      return lat && lng
-        ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
-        : `https://waze.com/ul?q=${encodeURIComponent(address + ', Eduardo Castex, La Pampa')}&navigate=yes`;
-    }
-    // Google Maps
-    return lat && lng
-      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address + ', Eduardo Castex, La Pampa')}`;
-  }
-
-  return (
-    <div className="flex gap-1 shrink-0">
-      <a
-        href={buildUrl('google')}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Abrir en Google Maps"
-        className="inline-flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full transition"
-      >
-        🗺 Maps
-      </a>
-      <a
-        href={buildUrl('waze')}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Navegar con Waze"
-        className="inline-flex items-center gap-1 text-xs bg-sky-50 hover:bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full transition"
-      >
-        🚗 Waze
-      </a>
-    </div>
-  );
-}
-
 function TicketCard({ ticket: t, loading, onAdvance }) {
   const [expanded, setExpanded] = useState(false);
   const next = NEXT_STATUS[t.status];
 
+  const urgentStyle = t.priority === 'urgent'
+    ? { borderLeft: '3px solid #D92D20' }
+    : {};
+
   return (
-    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${t.priority === 'urgent' ? 'border-red-300' : 'border-gray-200'}`}>
+    <div className="rounded-xl overflow-hidden transition"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', ...urgentStyle }}>
       <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-mono text-gray-400">{t.ticket_number}</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                {t.ticket_number}
+              </span>
               <StatusBadge status={t.status} />
               <PriorityBadge priority={t.priority} />
             </div>
-            <p className="font-semibold text-gray-800">{t.client_name || '—'}</p>
-            {t.client_phone && <p className="text-xs text-gray-500">📞 {t.client_phone}</p>}
-            {t.client_address && (
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-gray-600">📍 {t.client_address}</p>
-                <GpsButton lat={t.client_lat} lng={t.client_lng} address={t.client_address} />
-              </div>
+
+            <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+              {t.client_name || '—'}
+            </p>
+
+            {t.client_phone && (
+              <a href={`tel:${t.client_phone}`}
+                className="text-xs mt-0.5 inline-block"
+                style={{ color: 'var(--text-secondary)' }}>
+                📞 {t.client_phone}
+              </a>
             )}
-            <p className="text-sm text-gray-600 mt-1">{t.description}</p>
+
+            {t.client_address && (
+              <>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  📍 {t.client_address}
+                </p>
+                <GpsButton lat={t.client_lat} lng={t.client_lng} address={t.client_address} />
+              </>
+            )}
+
+            <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>{t.description}</p>
           </div>
+
           <button
             onClick={() => setExpanded(v => !v)}
-            className="text-gray-400 hover:text-gray-600 text-xs shrink-0"
+            className="shrink-0 text-xs px-2.5 py-1 rounded-lg transition"
+            style={{
+              background: 'var(--bg-base)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border)',
+            }}
           >
-            {expanded ? '▲ menos' : '▼ mapa'}
+            {expanded ? '▲ cerrar' : '▼ mapa'}
           </button>
         </div>
 
@@ -218,8 +258,8 @@ function TicketCard({ ticket: t, loading, onAdvance }) {
           <div className="mt-3">
             <MapView lat={t.client_lat} lng={t.client_lng} />
             {t.resolution_notes && (
-              <p className="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
-                Resolución: {t.resolution_notes}
+              <p className="text-xs mt-2 p-2.5 rounded-lg" style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>
+                <span className="font-medium">Resolución:</span> {t.resolution_notes}
               </p>
             )}
           </div>
@@ -229,9 +269,10 @@ function TicketCard({ ticket: t, loading, onAdvance }) {
           <button
             onClick={() => onAdvance(t)}
             disabled={loading}
-            className={`mt-3 w-full text-white text-sm font-semibold py-2.5 rounded-lg transition disabled:opacity-50 ${next.cls}`}
+            className="mt-3 w-full text-white text-sm font-semibold py-2.5 rounded-lg transition disabled:opacity-50"
+            style={{ background: next.value === 'resolved' ? '#059669' : next.value === 'on_the_way' ? '#D97706' : 'var(--accent)' }}
           >
-            {loading ? 'Actualizando...' : next.label}
+            {loading ? 'Actualizando...' : `${next.icon} ${next.label}`}
           </button>
         )}
       </div>
