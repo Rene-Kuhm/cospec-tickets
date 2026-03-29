@@ -4,10 +4,13 @@ import api from '../api';
 
 const EMPTY = { client_name: '', client_phone: '', client_address: '', lat: null, lng: null, description: '', priority: 'normal' };
 
+const BASE_LOCATION = 'Eduardo Castex, La Pampa, Argentina';
+
 async function geocode(address) {
   try {
+    const query = address.toLowerCase().includes('castex') ? address : `${address}, ${BASE_LOCATION}`;
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=ar&limit=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ar&limit=1`
     );
     const data = await res.json();
     if (data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
@@ -76,7 +79,7 @@ export default function TicketForm({ onCreated, onCancel }) {
           value={form.client_address}
           onChange={e => set('client_address', e.target.value)}
           onBlur={handleAddressBlur}
-          placeholder="Av. San Martín 1234, Ushuaia"
+          placeholder="Estrada 1310  (se agrega Eduardo Castex automáticamente)"
         />
       </div>
 

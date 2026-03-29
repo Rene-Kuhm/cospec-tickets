@@ -145,6 +145,43 @@ export default function TechnicianDashboard() {
   );
 }
 
+function GpsButton({ lat, lng, address }) {
+  function buildUrl(app) {
+    if (app === 'waze') {
+      return lat && lng
+        ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+        : `https://waze.com/ul?q=${encodeURIComponent(address + ', Eduardo Castex, La Pampa')}&navigate=yes`;
+    }
+    // Google Maps
+    return lat && lng
+      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address + ', Eduardo Castex, La Pampa')}`;
+  }
+
+  return (
+    <div className="flex gap-1 shrink-0">
+      <a
+        href={buildUrl('google')}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Abrir en Google Maps"
+        className="inline-flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full transition"
+      >
+        🗺 Maps
+      </a>
+      <a
+        href={buildUrl('waze')}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Navegar con Waze"
+        className="inline-flex items-center gap-1 text-xs bg-sky-50 hover:bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full transition"
+      >
+        🚗 Waze
+      </a>
+    </div>
+  );
+}
+
 function TicketCard({ ticket: t, loading, onAdvance }) {
   const [expanded, setExpanded] = useState(false);
   const next = NEXT_STATUS[t.status];
@@ -162,7 +199,10 @@ function TicketCard({ ticket: t, loading, onAdvance }) {
             <p className="font-semibold text-gray-800">{t.client_name || '—'}</p>
             {t.client_phone && <p className="text-xs text-gray-500">📞 {t.client_phone}</p>}
             {t.client_address && (
-              <p className="text-sm text-gray-600 mt-1">📍 {t.client_address}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-gray-600">📍 {t.client_address}</p>
+                <GpsButton lat={t.client_lat} lng={t.client_lng} address={t.client_address} />
+              </div>
             )}
             <p className="text-sm text-gray-600 mt-1">{t.description}</p>
           </div>

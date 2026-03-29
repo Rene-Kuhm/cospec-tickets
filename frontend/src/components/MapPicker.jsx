@@ -6,7 +6,7 @@ function ClickHandler({ onSelect }) {
 }
 
 export function MapPicker({ lat, lng, onSelect }) {
-  const center = lat && lng ? [lat, lng] : [-34.6037, -58.3816]; // Buenos Aires default
+  const center = lat && lng ? [lat, lng] : [-35.9167, -64.2833]; // Eduardo Castex, La Pampa
   return (
     <div className="h-48 rounded-lg overflow-hidden border border-gray-200">
       <MapContainer center={center} zoom={lat ? 15 : 10} style={{ height: '100%', width: '100%' }}>
