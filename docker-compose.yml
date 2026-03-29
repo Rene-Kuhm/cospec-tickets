@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cospec-postgres
+    environment:
+      POSTGRES_DB: cospec
+      POSTGRES_USER: cospec
+      POSTGRES_PASSWORD: cospec123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cospec -d cospec"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cospec-net
+
+  backend:
+    build: ./backend
+    container_name: cospec-backend
+    environment:
+      DATABASE_URL: postgres://cospec:cospec123@postgres:5432/cospec
+      JWT_SECRET: cospec-super-secret-jwt-key-change-in-prod
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: cospec-evo-key-2024
+      EVOLUTION_INSTANCE: cospec
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cospec-net
+
+  frontend:
+    build: ./frontend
+    container_name: cospec-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cospec-net
+
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: cospec-evolution
+    environment:
+      SERVER_URL: http://localhost:8080
+      AUTHENTICATION_TYPE: apikey
+      AUTHENTICATION_API_KEY: cospec-evo-key-2024
+      TELEMETRY: false
+    volumes:
+      - evolution_data:/evolution/store
+    ports:
+      - "8080:8080"
+    networks:
+      - cospec-net
+
+networks:
+  cospec-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  evolution_data:
