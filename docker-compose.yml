@@ -48,17 +48,18 @@ services:
       - cospec-net
 
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: atendai/evolution-api:v2.1.1
     container_name: cospec-evolution
-    environment:
-      SERVER_URL: http://localhost:8080
-      AUTHENTICATION_TYPE: apikey
-      AUTHENTICATION_API_KEY: cospec-evo-key-2024
-      TELEMETRY: false
+    env_file:
+      - evolution.env
     volumes:
       - evolution_data:/evolution/store
+      - ./evolution.env:/evolution/.env
     ports:
       - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - cospec-net
 

@@ -15,19 +15,43 @@ const PRIORITY_ES = { low: 'Baja', normal: 'Normal', high: 'Alta', urgent: 'Urge
 router.get('/stats', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const [total, todayCount, resolvedToday, pending, urgent] = await Promise.all([
+    const [total, todayCount, resolvedToday, pending, urgent, byStatus, byTech] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM tickets'),
-      pool.query('SELECT COUNT(*) FROM tickets WHERE DATE(created_at AT TIME ZONE \'America/Argentina/Buenos_Aires\') = $1', [today]),
-      pool.query('SELECT COUNT(*) FROM tickets WHERE status=$1 AND DATE(resolved_at AT TIME ZONE \'America/Argentina/Buenos_Aires\')=$2', ['resolved', today]),
-      pool.query('SELECT COUNT(*) FROM tickets WHERE status != $1', ['resolved']),
-      pool.query('SELECT COUNT(*) FROM tickets WHERE priority=$1 AND status!=$2', ['urgent', 'resolved']),
+      pool.query("SELECT COUNT(*) FROM tickets WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1", [today]),
+      pool.query("SELECT COUNT(*) FROM tickets WHERE status=$1 AND DATE(resolved_at AT TIME ZONE 'America/Argentina/Buenos_Aires')=$2", ['resolved', today]),
+      pool.query("SELECT COUNT(*) FROM tickets WHERE status != $1", ['resolved']),
+      pool.query("SELECT COUNT(*) FROM tickets WHERE priority=$1 AND status!=$2", ['urgent', 'resolved']),
+      pool.query("SELECT status, COUNT(*) AS count FROM tickets GROUP BY status"),
+      pool.query(`
+        SELECT u.id, u.name,
+          COUNT(t.id) FILTER (WHERE t.status != 'resolved') AS active,
+          COUNT(t.id) FILTER (WHERE t.status = 'resolved' AND DATE(t.resolved_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1) AS resolved_today,
+          COUNT(t.id) AS total_assigned
+        FROM users u
+        LEFT JOIN tickets t ON t.assigned_to = u.id
+        WHERE u.role = 'technician' AND u.active = true
+        GROUP BY u.id, u.name
+        ORDER BY active DESC, u.name
+      `, [today]),
     ]);
+
+    const statusCounts = {};
+    byStatus.rows.forEach(r => { statusCounts[r.status] = parseInt(r.count); });
+
     res.json({
       total: parseInt(total.rows[0].count),
       today: parseInt(todayCount.rows[0].count),
       resolved_today: parseInt(resolvedToday.rows[0].count),
       pending: parseInt(pending.rows[0].count),
       urgent: parseInt(urgent.rows[0].count),
+      by_status: statusCounts,
+      technicians: byTech.rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        active: parseInt(r.active),
+        resolved_today: parseInt(r.resolved_today),
+        total_assigned: parseInt(r.total_assigned),
+      })),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
