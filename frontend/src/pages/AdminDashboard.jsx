@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
 import AppHeader from '../components/AppHeader';
+import TicketForm from '../components/TicketForm';
 import { MapView } from '../components/MapPicker';
 import api from '../api';
+import * as XLSX from 'xlsx';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
@@ -184,7 +186,7 @@ function DetailPanel({ ticket, technicians, onClose, onAssign }) {
   const t = detail || ticket;
 
   return (
-    <div className="w-80 rounded-xl overflow-y-auto shrink-0 flex flex-col"
+    <div className="w-full rounded-xl overflow-y-auto shrink-0 flex flex-col"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between shrink-0"
@@ -440,6 +442,9 @@ export default function AdminDashboard() {
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [loadingExport, setLoadingExport] = useState(false);
   const [showTechModal, setShowTechModal] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showNewTicket, setShowNewTicket] = useState(false);
 
   const loadTickets = useCallback(async () => {
     const params = filterStatus ? `?status=${filterStatus}` : '';
@@ -469,6 +474,12 @@ export default function AdminDashboard() {
 
   async function handleAssign(ticketId, techId) {
     await api.patch(`/tickets/${ticketId}/assign`, { technician_id: techId });
+  }
+
+  function handleTicketCreated(ticket) {
+    setTickets(prev => [ticket, ...prev]);
+    setShowNewTicket(false);
+    loadStats();
   }
 
   async function handleExport() {
@@ -503,6 +514,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
       {showTechModal && <TechnicianModal onClose={() => setShowTechModal(false)} />}
+      {showUsersModal && <UsersManagerModal onClose={() => setShowUsersModal(false)} />}
+      {showImportModal && <ClientImportModal onClose={() => setShowImportModal(false)} />}
       <AppHeader
         section="Administración"
         user={user}
@@ -510,12 +523,36 @@ export default function AdminDashboard() {
         actions={
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowNewTicket(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-white transition"
+              style={{ background: 'var(--accent)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}>
+              <span className="text-base leading-none">+</span> Nuevo Reclamo
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+              style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+              📥 Importar Clientes
+            </button>
+            <button
+              onClick={() => setShowUsersModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+              style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+              👥 Usuarios
+            </button>
+            <button
               onClick={() => setShowTechModal(true)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition"
               style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-              👥 Técnicos
+              🔧 Teléfonos
             </button>
             <select
               className="text-xs px-2.5 py-1.5 rounded-lg border outline-none"
@@ -545,7 +582,7 @@ export default function AdminDashboard() {
       />
 
       {/* Stats row */}
-      <div className="px-6 pt-4 pb-2 grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="px-4 sm:px-6 pt-4 pb-2 grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
         <StatCard icon="📋" label="Total reclamos"   value={stats.total}          accent="var(--text-primary)" />
         <StatCard icon="🆕" label="Creados hoy"      value={stats.today}          accent="var(--accent)" />
         <StatCard icon="✅" label="Resueltos hoy"    value={stats.resolved_today} accent="#059669" />
@@ -555,8 +592,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 px-6 pb-6 gap-4 overflow-hidden" style={{ minHeight: 0 }}>
-        {/* Ticket list */}
+      <div className="flex flex-1 px-4 sm:px-6 pb-6 gap-4 overflow-hidden" style={{ minHeight: 0 }}>
+{/* Ticket list */}
         <div className="flex-1 rounded-xl flex flex-col overflow-hidden"
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {/* Toolbar */}
@@ -601,8 +638,8 @@ export default function AdminDashboard() {
             </span>
           </div>
 
-          {/* Column headers */}
-          <div className="grid px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+          {/* Column headers — desktop only */}
+          <div className="hidden md:grid px-4 py-2 text-xs font-semibold uppercase tracking-wider"
             style={{
               gridTemplateColumns: '100px 1fr 140px 120px 110px',
               borderBottom: '1px solid var(--border)',
@@ -636,8 +673,47 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className="w-80 shrink-0 flex flex-col gap-4 overflow-y-auto">
+        {/* New Ticket Form — mobile overlay / desktop sidebar */}
+        {showNewTicket && (
+          <>
+            {/* Mobile overlay */}
+            <div className="md:hidden fixed inset-0 z-50 flex flex-col"
+              style={{ background: 'var(--bg-card)' }}>
+              <div className="flex items-center justify-between px-4 py-3 shrink-0"
+                style={{ borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Nuevo Reclamo</h3>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Completá los datos del cliente</p>
+                </div>
+                <button onClick={() => setShowNewTicket(false)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>✕</button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <TicketForm onCreated={handleTicketCreated} onCancel={() => setShowNewTicket(false)} />
+              </div>
+            </div>
+            {/* Desktop sidebar */}
+            <div className="hidden md:block w-[420px] shrink-0">
+              <div className="rounded-xl p-5 sticky top-5"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Nuevo Reclamo</h3>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Completá los datos del cliente</p>
+                  </div>
+                  <button onClick={() => setShowNewTicket(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                    style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>✕</button>
+                </div>
+                <TicketForm onCreated={handleTicketCreated} onCancel={() => setShowNewTicket(false)} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Right panel — desktop only; mobile shows modal when ticket selected */}
+        <div className="hidden md:flex w-80 shrink-0 flex-col gap-4 overflow-y-auto">
           {selected ? (
             <DetailPanel
               ticket={selected}
@@ -662,6 +738,19 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+
+        {/* Mobile: detail panel overlay when ticket selected */}
+        {selected && (
+          <div className="md:hidden fixed inset-0 z-50 flex flex-col"
+            style={{ background: 'var(--bg-base)' }}>
+            <DetailPanel
+              ticket={selected}
+              technicians={technicians}
+              onClose={() => setSelected(null)}
+              onAssign={handleAssign}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -669,70 +758,84 @@ export default function AdminDashboard() {
 
 // ─── Ticket Row ────────────────────────────────────────────────────────────────
 function TicketRow({ ticket: t, selected, onClick }) {
+  const selBg = selected ? 'var(--accent-light)' : 'transparent';
+  const selBorder = selected ? '3px solid var(--accent)' : t.priority === 'urgent' ? '3px solid #D92D20' : '3px solid transparent';
+
   return (
-    <div
-      onClick={onClick}
-      className="grid px-4 py-3 cursor-pointer transition items-center"
-      style={{
-        gridTemplateColumns: '100px 1fr 140px 120px 110px',
-        borderBottom: '1px solid var(--border)',
-        background: selected ? 'var(--accent-light)' : 'transparent',
-        borderLeft: selected ? '3px solid var(--accent)' : '3px solid transparent',
-      }}
-      onMouseEnter={e => { if (!selected) e.currentTarget.style.background = 'var(--bg-base)'; }}
-      onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
-    >
-      {/* Ticket # */}
-      <div>
-        <p className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
-          {t.ticket_number}
-        </p>
-        <PriorityBadge priority={t.priority} />
-      </div>
-
-      {/* Client + description */}
-      <div className="min-w-0 pr-3">
-        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-          {t.client_name || '—'}
-        </p>
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      {/* Mobile card */}
+      <div
+        onClick={onClick}
+        className="md:hidden p-4 cursor-pointer transition"
+        style={{ background: selBg, borderLeft: selBorder }}
+        onMouseEnter={e => { if (!selected) e.currentTarget.style.background = 'var(--bg-base)'; }}
+        onMouseLeave={e => { if (!selected) e.currentTarget.style.background = selBg; }}
+      >
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <p className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
+              {t.ticket_number}
+            </p>
+            <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
+              {t.client_name || '—'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <StatusBadge status={t.status} />
+            <PriorityBadge priority={t.priority} />
+          </div>
+        </div>
         {t.client_address && (
-          <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-            📍 {t.client_address}
-          </p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>📍 {t.client_address}</p>
         )}
-        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-          {t.description}
-        </p>
-      </div>
-
-      {/* Status */}
-      <div>
-        <StatusBadge status={t.status} />
-      </div>
-
-      {/* Technician */}
-      <div>
-        {t.assigned_name ? (
-          <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
-            {t.assigned_name}
+        {t.description && (
+          <p className="text-xs line-clamp-1 mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t.description}</p>
+        )}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs font-medium" style={{ color: t.assigned_name ? 'var(--accent)' : 'var(--text-muted)' }}>
+            {t.assigned_name ? `🔧 ${t.assigned_name}` : 'Sin asignar'}
           </span>
-        ) : (
-          <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
-            Sin asignar
-          </span>
-        )}
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fmtShort(t.created_at)}</p>
+        </div>
       </div>
 
-      {/* Date */}
-      <div className="text-right">
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {fmtShort(t.created_at)}
-        </p>
-        {t.resolved_at && (
-          <p className="text-xs mt-0.5 font-medium" style={{ color: '#059669' }}>
-            ✓ {fmtShort(t.resolved_at)}
-          </p>
-        )}
+      {/* Desktop row */}
+      <div
+        onClick={onClick}
+        className="hidden md:grid px-4 py-3 cursor-pointer transition items-center"
+        style={{
+          gridTemplateColumns: '100px 1fr 140px 120px 110px',
+          background: selBg,
+          borderLeft: selBorder,
+        }}
+        onMouseEnter={e => { if (!selected) e.currentTarget.style.background = 'var(--bg-base)'; }}
+        onMouseLeave={e => { if (!selected) e.currentTarget.style.background = selBg; }}
+      >
+        <div>
+          <p className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>{t.ticket_number}</p>
+          <PriorityBadge priority={t.priority} />
+        </div>
+        <div className="min-w-0 pr-3">
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{t.client_name || '—'}</p>
+          {t.client_address && (
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>📍 {t.client_address}</p>
+          )}
+          <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t.description}</p>
+        </div>
+        <div><StatusBadge status={t.status} /></div>
+        <div>
+          {t.assigned_name ? (
+            <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>{t.assigned_name}</span>
+          ) : (
+            <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Sin asignar</span>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fmtShort(t.created_at)}</p>
+          {t.resolved_at && (
+            <p className="text-xs mt-0.5 font-medium" style={{ color: '#059669' }}>✓ {fmtShort(t.resolved_at)}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -746,6 +849,441 @@ function Section({ label, children }) {
         {label}
       </p>
       {children}
+    </div>
+  );
+}
+
+// ─── Users Manager Modal ───────────────────────────────────────────────────────────
+function UsersManagerModal({ onClose }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'secretary', phone: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/users');
+      setUsers(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  function resetForm() {
+    setForm({ name: '', username: '', password: '', role: 'secretary', phone: '' });
+    setEditing(null);
+    setShowForm(false);
+    setError('');
+  }
+
+  function handleEdit(user) {
+    setEditing(user.id);
+    setForm({ name: user.name, username: user.username, password: '', role: user.role, phone: user.phone || '' });
+    setShowForm(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      if (editing) {
+        const updateData = { name: form.name, phone: form.phone, active: true };
+        if (form.password) {
+          await api.patch(`/users/${editing}/password`, { password: form.password });
+        }
+        await api.patch(`/users/${editing}`, updateData);
+      } else {
+        await api.post('/users', form);
+      }
+      resetForm();
+      loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+    try {
+      await api.delete(`/users/${id}`);
+      loadUsers();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al eliminar');
+    }
+  }
+
+  const roleColors = {
+    admin: { bg: '#EEF0FF', text: '#4F3FE6' },
+    secretary: { bg: '#ECFDF5', text: '#059669' },
+    technician: { bg: '#FFFBEB', text: '#D97706' },
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div className="w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        {/* Header */}
+        <div className="px-6 py-4 flex items-center justify-between shrink-0"
+          style={{ borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <h3 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+              Gestión de Usuarios
+            </h3>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Crear, editar o eliminar usuarios del sistema
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-lg transition"
+            style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
+            ×
+          </button>
+        </div>
+
+        {/* Toolbar */}
+        <div className="px-6 py-3 flex items-center gap-3 shrink-0"
+          style={{ borderBottom: '1px solid var(--border)' }}>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition"
+            style={{ background: 'var(--accent)' }}
+          >
+            + Nuevo Usuario
+          </button>
+        </div>
+
+        {/* Form */}
+        {showForm && (
+          <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Nombre *</label>
+                <input
+                  required
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Usuario *</label>
+                <input
+                  required
+                  disabled={!!editing}
+                  value={form.username}
+                  onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-lg border outline-none disabled:opacity-50"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                  Contraseña {editing ? '(dejar vacío para mantener)' : '*'}
+                </label>
+                <input
+                  type="password"
+                  required={!editing}
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Rol *</label>
+                <select
+                  required
+                  value={form.role}
+                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                >
+                  <option value="admin">Administrador</option>
+                  <option value="secretary">Secretaria</option>
+                  <option value="technician">Técnico</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Teléfono (para WhatsApp)</label>
+                <input
+                  value={form.phone}
+                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  placeholder="5492954XXXXXXX"
+                  className="w-full px-3 py-2 text-sm rounded-lg border outline-none font-mono"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              {error && (
+                <div className="sm:col-span-2 text-sm" style={{ color: '#D92D20' }}>{error}</div>
+              )}
+              <div className="sm:col-span-2 flex gap-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition disabled:opacity-50"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-2 rounded-lg text-sm transition"
+                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Users List */}
+        <div className="overflow-y-auto flex-1 p-6">
+          {loading ? (
+            <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>Cargando…</p>
+          ) : users.length === 0 ? (
+            <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>No hay usuarios</p>
+          ) : (
+            <div className="space-y-2">
+              {users.map(u => (
+                <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl"
+                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                    style={{ background: roleColors[u.role]?.text || 'var(--accent)' }}>
+                    {u.name[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
+                    <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <span>@{u.username}</span>
+                      <span style={{ color: roleColors[u.role]?.text }}>• {u.role}</span>
+                      {u.phone && <span>📞 {u.phone}</span>}
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium px-2 py-1 rounded-full"
+                    style={{
+                      background: u.active ? '#ECFDF5' : '#F3F4F6',
+                      color: u.active ? '#059669' : '#9CA3AF',
+                    }}>
+                    {u.active ? 'Activo' : 'Inactivo'}
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleEdit(u)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                      style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(u.id)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                      style={{ background: '#FEF2F2', color: '#D92D20', border: '1px solid #FECACA' }}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Client Import Modal ───────────────────────────────────────────────────────────
+function ClientImportModal({ onClose }) {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState(null);
+
+  function handleFile(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f);
+    setResult(null);
+    
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        
+        // Skip header row, map columns
+        const rows = data.slice(1).filter(r => r.length > 0).map((row, i) => ({
+          name: String(row[0] || '').trim(),
+          dni: String(row[1] || '').trim(),
+          phone: String(row[2] || '').trim(),
+          address: String(row[3] || '').trim(),
+          lat: row[4] ? parseFloat(row[4]) : null,
+          lng: row[5] ? parseFloat(row[5]) : null,
+        })).filter(r => r.name);
+        
+        setPreview(rows.slice(0, 10)); // Show first 10
+        if (rows.length > 10) setPreview(prev => [...prev, { __more: rows.length - 10 }]);
+      } catch (err) {
+        alert('Error al leer el archivo: ' + err.message);
+      }
+    };
+    reader.readAsBinaryString(f);
+  }
+
+  async function handleImport() {
+    if (!file) return;
+    setImporting(true);
+    setResult(null);
+    
+    try {
+      const wb = XLSX.read(file, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      
+      const clients = data.slice(1).filter(r => r.length > 0).map(row => ({
+        name: String(row[0] || '').trim(),
+        dni: String(row[1] || '').trim(),
+        phone: String(row[2] || '').trim(),
+        address: String(row[3] || '').trim(),
+        lat: row[4] ? parseFloat(row[4]) : null,
+        lng: row[5] ? parseFloat(row[5]) : null,
+      })).filter(r => r.name);
+      
+      const { data: res } = await api.post('/clients/import', { clients });
+      setResult(res);
+    } catch (err) {
+      setResult({ error: err.response?.data?.error || 'Error al importar' });
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        {/* Header */}
+        <div className="px-6 py-4 flex items-center justify-between"
+          style={{ borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <h3 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+              Importar Clientes desde Excel
+            </h3>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Subí un archivo .xlsx con tus clientes
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-lg transition"
+            style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
+            ×
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          {/* Upload */}
+          <div className="border-2 border-dashed rounded-xl p-6 text-center transition"
+            style={{ borderColor: file ? 'var(--accent)' : 'var(--border)', background: 'var(--bg-base)' }}>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFile}
+              className="hidden"
+              id="excel-upload"
+            />
+            <label htmlFor="excel-upload" className="cursor-pointer">
+              <div className="text-3xl mb-2">📄</div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {file ? file.name : 'Hacé click para subir un Excel'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Formato: nombre, DNI, teléfono, dirección, lat, lng
+              </p>
+            </label>
+          </div>
+
+          {/* Preview */}
+          {preview.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
+                Vista previa (primeros 10):
+              </p>
+              <div className="rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                <div className="grid grid-cols-3 gap-2 p-2 text-xs font-semibold"
+                  style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
+                  <span>Nombre</span>
+                  <span>DNI</span>
+                  <span>Teléfono</span>
+                </div>
+                {preview.map((r, i) => (
+                  r.__more ? (
+                    <div key={i} className="p-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                      …y {r.__more} más
+                    </div>
+                  ) : (
+                    <div key={i} className="grid grid-cols-3 gap-2 p-2 text-xs border-t"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                      <span className="truncate">{r.name}</span>
+                      <span className="truncate">{r.dni || '—'}</span>
+                      <span className="truncate">{r.phone || '—'}</span>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div className={`rounded-lg p-4 ${result.error ? 'bg-red-50' : 'bg-green-50'}`}
+              style={{ border: `1px solid ${result.error ? '#FECACA' : '#A7F3D0'}` }}>
+              {result.error ? (
+                <p style={{ color: '#D92D20' }}>{result.error}</p>
+              ) : (
+                <p style={{ color: '#059669' }}>
+                  ✓ Se importaron {result.imported} de {result.total} clientes
+                  {result.errors?.length > 0 && ` (${result.errors.length} errores)`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleImport}
+              disabled={!file || importing}
+              className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition disabled:opacity-50"
+              style={{ background: 'var(--accent)' }}
+            >
+              {importing ? 'Importando...' : 'Importar Clientes'}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-lg text-sm transition"
+              style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

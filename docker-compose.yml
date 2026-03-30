@@ -27,7 +27,7 @@ services:
       JWT_SECRET: cospec-super-secret-jwt-key-change-in-prod
       EVOLUTION_API_URL: http://evolution-api:8080
       EVOLUTION_API_KEY: cospec-evo-key-2024
-      EVOLUTION_INSTANCE: cospec
+      EVOLUTION_INSTANCE: rene
       PORT: 3000
     ports:
       - "3000:3000"

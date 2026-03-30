@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
 import AppHeader from '../components/AppHeader';
+import TicketForm from '../components/TicketForm';
 import { MapView } from '../components/MapPicker';
 import api from '../api';
 
@@ -300,6 +301,7 @@ export default function TechnicianDashboard() {
   const [tickets, setTickets] = useState([]);
   const [resolving, setResolving] = useState(null);
   const [loading, setLoading] = useState({});
+  const [showNewTicket, setShowNewTicket] = useState(false);
 
   async function loadTickets() {
     const { data } = await api.get('/tickets');
@@ -335,6 +337,11 @@ export default function TechnicianDashboard() {
     const urgent = active.filter(t => t.priority === 'urgent');
     return { active: active.length, resolvedToday: resolvedToday.length, urgent: urgent.length };
   }, [tickets, today]);
+
+  function handleTicketCreated(ticket) {
+    setTickets(prev => [ticket, ...prev]);
+    setShowNewTicket(false);
+  }
 
   const active = useMemo(() =>
     tickets
@@ -372,6 +379,14 @@ export default function TechnicianDashboard() {
                 {active.length} asignado{active.length !== 1 ? 's' : ''}
               </span>
             )}
+            <button
+              onClick={() => setShowNewTicket(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-white transition"
+              style={{ background: 'var(--accent)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}>
+              <span className="text-base leading-none">+</span> Nuevo Reclamo
+            </button>
           </div>
         }
       />
@@ -400,7 +415,8 @@ export default function TechnicianDashboard() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto w-full px-4 py-5 space-y-3">
+      <div className={`flex flex-1 ${showNewTicket ? 'max-w-3xl' : 'max-w-2xl'} mx-auto w-full px-4 py-5 gap-6`}>
+        <div className={`flex-1 space-y-3 ${showNewTicket ? 'hidden' : ''}`}>
         {active.length === 0 && resolved.length === 0 ? (
           <div className="rounded-xl py-16 flex flex-col items-center text-center"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -461,6 +477,32 @@ export default function TechnicianDashboard() {
               </>
             )}
           </>
+        )}
+        </div>
+
+        {/* New Ticket Form */}
+        {showNewTicket && (
+          <div className="w-full md:w-[420px] shrink-0">
+            <div className="rounded-xl p-5 md:sticky md:top-5"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                    Nuevo Reclamo
+                  </h3>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    Completá los datos del cliente
+                  </p>
+                </div>
+                <button onClick={() => setShowNewTicket(false)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                  style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
+                  ✕
+                </button>
+              </div>
+              <TicketForm onCreated={handleTicketCreated} onCancel={() => setShowNewTicket(false)} />
+            </div>
+          </div>
         )}
       </div>
     </div>

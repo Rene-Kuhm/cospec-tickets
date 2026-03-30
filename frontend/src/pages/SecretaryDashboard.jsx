@@ -105,11 +105,11 @@ export default function SecretaryDashboard() {
         }
       />
 
-      <div className="flex flex-1 max-w-7xl mx-auto w-full px-6 py-5 gap-6">
+      <div className="flex flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-5 gap-6">
         {/* Left: list */}
         <div className="flex-1 min-w-0 flex flex-col gap-4">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <StatCard icon="📋" label="Total reclamos" value={stats.total}       accent="var(--text-primary)" />
             <StatCard icon="⏳" label="Activos"         value={stats.active}      accent="#D97706" />
             <StatCard icon="✅" label="Resueltos hoy"  value={stats.resolvedToday} accent="#059669" />
@@ -160,8 +160,8 @@ export default function SecretaryDashboard() {
               </span>
             </div>
 
-            {/* Column headers */}
-            <div className="grid px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+            {/* Column headers — desktop only */}
+            <div className="hidden md:grid px-4 py-2 text-xs font-semibold uppercase tracking-wider"
               style={{
                 gridTemplateColumns: '90px 1fr 150px 120px 100px',
                 color: 'var(--text-muted)',
@@ -186,29 +186,52 @@ export default function SecretaryDashboard() {
           </div>
         </div>
 
-        {/* Right: form */}
+        {/* Right: form — mobile overlay / desktop sidebar */}
         {showForm && (
-          <div className="w-[420px] shrink-0">
-            <div className="rounded-xl p-5 sticky top-5"
-              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center justify-between mb-5">
+          <>
+            {/* Mobile: full-screen overlay */}
+            <div className="md:hidden fixed inset-0 z-50 flex flex-col"
+              style={{ background: 'var(--bg-card)' }}>
+              <div className="flex items-center justify-between px-4 py-3 shrink-0"
+                style={{ borderBottom: '1px solid var(--border)' }}>
                 <div>
-                  <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                    Nuevo Reclamo
-                  </h3>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Completá los datos del cliente
-                  </p>
+                  <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Nuevo Reclamo</h3>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Completá los datos del cliente</p>
                 </div>
                 <button onClick={() => setShowForm(false)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
                   ✕
                 </button>
               </div>
-              <TicketForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />
+              <div className="flex-1 overflow-y-auto p-4">
+                <TicketForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />
+              </div>
             </div>
-          </div>
+
+            {/* Desktop: sidebar */}
+            <div className="hidden md:block w-[420px] shrink-0">
+              <div className="rounded-xl p-5 sticky top-5"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                      Nuevo Reclamo
+                    </h3>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      Completá los datos del cliente
+                    </p>
+                  </div>
+                  <button onClick={() => setShowForm(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                    style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
+                    ✕
+                  </button>
+                </div>
+                <TicketForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -216,75 +239,93 @@ export default function SecretaryDashboard() {
 }
 
 function TicketRow({ ticket: t }) {
+  const urgentBorder = t.priority === 'urgent' ? '3px solid #D92D20' : '3px solid transparent';
   return (
-    <div
-      className="grid px-4 py-3 transition items-center"
-      style={{
-        gridTemplateColumns: '90px 1fr 150px 120px 100px',
-        borderBottom: '1px solid var(--border)',
-        borderLeft: t.priority === 'urgent' ? '3px solid #D92D20' : '3px solid transparent',
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-base)'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      {/* Ticket # + priority */}
-      <div>
-        <p className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
-          {t.ticket_number}
-        </p>
-        <div className="mt-1">
-          <PriorityBadge priority={t.priority} />
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      {/* Mobile card */}
+      <div
+        className="md:hidden p-4 transition"
+        style={{ borderLeft: urgentBorder }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-base)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <p className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
+              {t.ticket_number}
+            </p>
+            <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
+              {t.client_name || '—'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <StatusBadge status={t.status} />
+            <PriorityBadge priority={t.priority} />
+          </div>
+        </div>
+        <div className="space-y-0.5">
+          {t.client_phone && (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>📞 {t.client_phone}</p>
+          )}
+          {t.client_address && (
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>📍 {t.client_address}</p>
+          )}
+          {t.description && (
+            <p className="text-xs line-clamp-1" style={{ color: 'var(--text-secondary)' }}>{t.description}</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs font-medium" style={{ color: t.assigned_name ? 'var(--accent)' : 'var(--text-muted)' }}>
+            {t.assigned_name ? `🔧 ${t.assigned_name}` : 'Sin asignar'}
+          </span>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fmtShort(t.created_at)}</p>
         </div>
       </div>
 
-      {/* Client */}
-      <div className="min-w-0 pr-3">
-        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-          {t.client_name || '—'}
-        </p>
-        {t.client_phone && (
-          <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-            📞 {t.client_phone}
+      {/* Desktop row */}
+      <div
+        className="hidden md:grid px-4 py-3 transition items-center"
+        style={{
+          gridTemplateColumns: '90px 1fr 150px 120px 100px',
+          borderLeft: urgentBorder,
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-base)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <div>
+          <p className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
+            {t.ticket_number}
           </p>
-        )}
-        {t.client_address && (
-          <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
-            📍 {t.client_address}
+          <div className="mt-1">
+            <PriorityBadge priority={t.priority} />
+          </div>
+        </div>
+        <div className="min-w-0 pr-3">
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+            {t.client_name || '—'}
           </p>
-        )}
-        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-          {t.description}
-        </p>
-      </div>
-
-      {/* Status */}
-      <div>
-        <StatusBadge status={t.status} />
-      </div>
-
-      {/* Technician */}
-      <div>
-        {t.assigned_name ? (
-          <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
-            🔧 {t.assigned_name}
-          </span>
-        ) : (
-          <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
-            Sin asignar
-          </span>
-        )}
-      </div>
-
-      {/* Date */}
-      <div className="text-right">
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {fmtShort(t.created_at)}
-        </p>
-        {t.resolved_at && (
-          <p className="text-xs mt-0.5 font-medium" style={{ color: '#059669' }}>
-            ✓ {fmtShort(t.resolved_at)}
-          </p>
-        )}
+          {t.client_phone && (
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>📞 {t.client_phone}</p>
+          )}
+          {t.client_address && (
+            <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>📍 {t.client_address}</p>
+          )}
+          <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t.description}</p>
+        </div>
+        <div><StatusBadge status={t.status} /></div>
+        <div>
+          {t.assigned_name ? (
+            <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>🔧 {t.assigned_name}</span>
+          ) : (
+            <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Sin asignar</span>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fmtShort(t.created_at)}</p>
+          {t.resolved_at && (
+            <p className="text-xs mt-0.5 font-medium" style={{ color: '#059669' }}>✓ {fmtShort(t.resolved_at)}</p>
+          )}
+        </div>
       </div>
     </div>
   );
